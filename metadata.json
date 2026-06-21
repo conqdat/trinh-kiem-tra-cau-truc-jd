@@ -1,0 +1,8 @@
+{
+  "name": "Trinh Kiem Tra Cau Truc JD",
+  "description": "Ung dung Client-Side kiem tra cau truc tep JD (.docx) trong Google Drive so voi tep mau.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
