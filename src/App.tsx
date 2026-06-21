@@ -176,6 +176,7 @@ export default function App() {
             <ResultsTable
               results={scanResults}
               ignoredCount={ignoredCount}
+              targetFolder={targetFolder}
               onReset={handleResetApp}
             />
           </div>

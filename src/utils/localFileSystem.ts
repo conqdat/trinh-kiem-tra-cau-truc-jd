@@ -36,10 +36,10 @@ export const selectLocalFile = async (): Promise<FileInfo | null> => {
 /**
  * Hiển thị hộp thoại chọn 1 thư mục trên máy tính
  */
-export const selectLocalFolder = async (): Promise<FileInfo | null> => {
+export const selectLocalFolder = async (mode: 'read' | 'readwrite' = 'read'): Promise<FileInfo | null> => {
   try {
     const handle = await (window as any).showDirectoryPicker({
-      mode: 'read'
+      mode: mode
     });
     return {
       id: handle.name,
@@ -76,7 +76,8 @@ export const scanFolderRecursive = async (
             name: entry.name,
             path: entryPath,
             file: file,
-            handle: entry
+            handle: entry,
+            parentHandle: dirHandle
           });
         }
       } else if (entry.kind === 'directory') {
@@ -135,6 +136,30 @@ export const copyFileToFolder = async (
     return newFileName;
   } catch (err) {
     console.error('Lỗi khi copy file:', err);
+    throw err;
+  }
+};
+
+/**
+ * Tạo một thư mục con bên trong thư mục chỉ định
+ */
+export const createSubfolder = async (parentDirHandle: any, folderName: string): Promise<any> => {
+  try {
+    return await parentDirHandle.getDirectoryHandle(folderName, { create: true });
+  } catch (err) {
+    console.error('Lỗi khi tạo thư mục con:', err);
+    throw err;
+  }
+};
+
+/**
+ * Xóa một file khỏi thư mục
+ */
+export const deleteFileFromFolder = async (parentDirHandle: any, fileName: string): Promise<void> => {
+  try {
+    await parentDirHandle.removeEntry(fileName);
+  } catch (err) {
+    console.error('Lỗi khi xóa file:', err);
     throw err;
   }
 };

@@ -1,15 +1,16 @@
 import { useState, useMemo } from 'react';
-import { ScanResult, SectionMatch } from '../types';
-import { Search, Filter, Download, ArrowUpDown, ChevronDown, ChevronUp, CheckCircle, XCircle, AlertCircle, FileSpreadsheet, ExternalLink, RefreshCw, Eye, AlertTriangle, Save, Loader2 } from 'lucide-react';
-import { selectLocalFolder, copyFileToFolder } from '../utils/localFileSystem';
+import { FileInfo, ScanResult } from '../types';
+import { copyFileToFolder, createSubfolder, deleteFileFromFolder } from '../utils/localFileSystem';
+import { Search, Filter, ArrowUpDown, ChevronDown, ChevronUp, CheckCircle, XCircle, AlertCircle, FileSpreadsheet, RefreshCw, Save, Loader2, ArrowRight } from 'lucide-react';
 
 interface ResultsTableProps {
   results: ScanResult[];
   ignoredCount: number;
+  targetFolder: FileInfo | null;
   onReset: () => void;
 }
 
-export default function ResultsTable({ results, ignoredCount, onReset }: ResultsTableProps) {
+export default function ResultsTable({ results, ignoredCount, targetFolder, onReset }: ResultsTableProps) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'valid' | 'invalid' | 'failed'>('all');
   const [folderFilter, setFolderFilter] = useState('all');
@@ -145,38 +146,57 @@ export default function ResultsTable({ results, ignoredCount, onReset }: Results
   };
 
   const handleExportFiles = async () => {
-    try {
-      const destDirHandle = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
-      if (!destDirHandle) return;
+    if (!targetFolder || !targetFolder.handle) {
+      setSaveMessage('Lỗi: Không tìm thấy quyền truy cập thư mục gốc.');
+      return;
+    }
 
+    try {
       setIsSaving(true);
       setSaveMessage(null);
       setSaveProgress(0);
 
-      const filesToExport = results.filter(r => r.status === 'valid' || r.status === 'invalid');
+      const invalidFiles = results.filter(r => r.status === 'invalid');
       
+      if (invalidFiles.length === 0) {
+        setSaveMessage('Không có file lỗi cấu trúc nào cần di chuyển.');
+        setIsSaving(false);
+        return;
+      }
+
+      // Create _index folder
+      let indexFolderHandle;
+      try {
+        indexFolderHandle = await createSubfolder(targetFolder.handle, '_index');
+      } catch (err) {
+        setSaveMessage('Lỗi: Không thể tạo thư mục _index. Đảm bảo bạn đã cấp quyền Read/Write.');
+        setIsSaving(false);
+        return;
+      }
+
       let successCount = 0;
-      for (let i = 0; i < filesToExport.length; i++) {
-        const result = filesToExport[i];
+      for (let i = 0; i < invalidFiles.length; i++) {
+        const result = invalidFiles[i];
         try {
-          const tag = result.status === 'valid' ? '_valid' : '_invalid';
-          await copyFileToFolder(result.file, destDirHandle, tag);
-          successCount++;
+          await copyFileToFolder(result.file, indexFolderHandle, '');
+          
+          if (result.file.parentHandle) {
+            await deleteFileFromFolder(result.file.parentHandle, result.file.name);
+            successCount++;
+          }
         } catch (e) {
-          console.error('Lỗi khi xuất file:', result.file.name, e);
+          console.error('Lỗi khi di chuyển file:', result.file.name, e);
         }
-        setSaveProgress(Math.round(((i + 1) / filesToExport.length) * 100));
+        setSaveProgress(Math.round(((i + 1) / invalidFiles.length) * 100));
       }
       
-      setSaveMessage(`Đã xuất thành công ${successCount}/${filesToExport.length} file.`);
+      setSaveMessage(`Đã di chuyển thành công ${successCount}/${invalidFiles.length} file.`);
     } catch (err: any) {
-      if (err.name !== 'AbortError') {
-        console.error(err);
-        setSaveMessage('Lỗi lưu file: ' + err.message);
-      }
+      console.error(err);
+      setSaveMessage('Lỗi thực thi: ' + err.message);
     } finally {
       setIsSaving(false);
-      setTimeout(() => setSaveMessage(null), 5000);
+      setTimeout(() => setSaveMessage(null), 8000);
     }
   };
 
@@ -305,8 +325,8 @@ export default function ResultsTable({ results, ignoredCount, onReset }: Results
               disabled={results.length === 0 || isSaving}
               className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold uppercase tracking-wide text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 disabled:text-slate-100 rounded-lg shadow-sm transition shrink-0"
             >
-              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 shrink-0" />}
-              {isSaving ? `Đang lưu (${saveProgress}%)` : 'Lưu File Kết Quả'}
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4 shrink-0" />}
+              {isSaving ? `Đang lưu (${saveProgress}%)` : 'Thực thi Di chuyển lỗi'}
             </button>
             <button
               onClick={exportToCSV}

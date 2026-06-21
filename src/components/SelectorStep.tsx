@@ -42,7 +42,7 @@ export default function SelectorStep({
   const handleSelectFolder = async () => {
     setErrorText(null);
     try {
-      const folder = await selectLocalFolder();
+      const folder = await selectLocalFolder('readwrite');
       if (folder) {
         onSelectFolder(folder);
       }

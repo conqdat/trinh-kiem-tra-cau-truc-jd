@@ -4,6 +4,7 @@ export interface FileInfo {
   path: string; // e.g. "Folder/Subfolder/file.docx"
   file?: File; // For individual file selection
   handle?: any; // FileSystemFileHandle or FileSystemDirectoryHandle
+  parentHandle?: any; // The FileSystemDirectoryHandle containing this file
 }
 
 export interface SectionMatch {
